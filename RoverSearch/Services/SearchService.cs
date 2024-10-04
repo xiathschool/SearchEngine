@@ -12,18 +12,28 @@ public class SearchService
 
     public SearchService()
     {
-        if (Directory.GetFiles(savePath).Length == 0)
+        if (Directory.GetFiles(savePath).Length == 0 || true)
         {
+            Dictionary<string, List<string>> metadata = new Dictionary<string, List<string>>();
             foreach (string file in Directory.GetFiles(path))
             {
                 Dictionary<string, int> occurrences = new Dictionary<string, int>();
                 
                 var text = File.ReadAllText(file);
+                Regex season = new Regex("(?<=season: )\\d{2}");
+                Regex episode = new Regex("(?<=episode: )\\d{2}");
+                Regex title = new Regex("(?<=title: ).*");
+                
+                metadata.Add(Path.GetFileName(file), new List<string>());
+                metadata[Path.GetFileName(file)].Add(season.Match(text).Value);
+                metadata[Path.GetFileName(file)].Add(episode.Match(text).Value);
+                metadata[Path.GetFileName(file)].Add(title.Match(text).Value);
+                
                 text = text.ToLower();
                 var words = text.Split(new[] {' ', '\n'});
+                Regex rgx = new Regex("[^a-zA-Z0-9]");
                 foreach (string word in words)
                 {
-                    Regex rgx = new Regex("[^a-zA-Z0-9]");
                     string newWord = rgx.Replace(word, "");
                     if (!occurrences.TryAdd(newWord, 1))
                     {
@@ -36,7 +46,10 @@ public class SearchService
                 writer.Write(dictonary);
                 writer.Close();
             }
-            
+            var serialize = JsonConvert.SerializeObject(metadata);
+            TextWriter anotherWriter = new StreamWriter(savePath.Substring(0, savePath.Length - 1) + "metadata.json");
+            anotherWriter.Write(serialize);
+            anotherWriter.Close();
         }
     }
 
@@ -52,22 +65,28 @@ public class SearchService
 
         var results = new List<Result>();
 
+        Dictionary<string, List<string>> metadata = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(File.ReadAllText(savePath.Substring(0, savePath.Length - 1) + "metadata.json"));
+
+        
         foreach (string file in Directory.GetFiles(savePath))
         {
             if (!file.Contains(".txt"))
             {
                 continue;
             }
-            var text2 = File.ReadAllLines(file.Replace("More Data", "Data"));
+            //var text2 = File.ReadAllLines(file.Replace("More Data", "Data"));
             Dictionary<string, int> d = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(file));
-            if (File.ReadAllText(file).Contains(query))
+            if (d.ContainsKey(query))
             {
                 var filename = Path.GetFileName(file);
 
-                results.Add(new Result {Title = text2[2].Substring(7), Season = text2[0].Substring(8), Episode = text2[1].Substring(9), Filename = filename});
+                results.Add(new Result {Title = metadata[Path.GetFileName(file)][2], Season = metadata[Path.GetFileName(file)][0], Episode = metadata[Path.GetFileName(file)][1], Filename = filename, Weight = d[query]});
             }
         }
 
+        results.Sort();
+        results.Reverse();
+            
         sw.Stop();
 
         return new SearchResults
