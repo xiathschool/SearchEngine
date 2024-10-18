@@ -12,4 +12,5 @@ public class Result:IComparable<Result>
     {
         return Weight.CompareTo(other.Weight);
     }
+    
 }
