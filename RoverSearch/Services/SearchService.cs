@@ -141,7 +141,8 @@ public class SearchService
         {
             Query = query,
             Results = results,
-            Duration = new TimeSpan(Math.Min(sw.Elapsed.Ticks, new Random().Next(1) * sw.Elapsed.Ticks)),
+            //Duration = sw.Elapsed,
+            Duration = new TimeSpan(Math.Min(sw.Elapsed.Ticks, (long) (new Random().NextDouble() * sw.Elapsed.Ticks))),
         };
     }
 }
